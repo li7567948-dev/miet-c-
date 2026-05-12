@@ -1,0 +1,12 @@
+string s[] = { "pear", "apple", "orange", "banana" };
+int nStr = 4;
+
+cout << "STRING ARRAY" << endl;
+cout << "Before sort:" << endl;
+printArray(s, nStr, 2);
+
+sortDesc<string>(s, nStr);
+
+cout << "After sort:" << endl;
+printArray(s, nStr, 2);
+cout << endl;
