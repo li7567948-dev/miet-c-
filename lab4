@@ -1,0 +1,556 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <iostream>
+#include <iomanip>
+#include <cstring>
+#include <limits>
+#include <string>
+
+using namespace std;
+
+//--------------------------------------------------
+// service functions
+//--------------------------------------------------
+void clearInput()
+{
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+}
+
+int inputInt(const char* prompt)
+{
+    int x;
+    cout << prompt;
+    while (!(cin >> x) || x < 0)
+    {
+        clearInput();
+        cout << "Error. Enter again: ";
+    }
+    clearInput();
+    return x;
+}
+
+double inputDouble(const char* prompt)
+{
+    double x;
+    cout << prompt;
+    while (!(cin >> x) || x < 0)
+    {
+        clearInput();
+        cout << "Error. Enter again: ";
+    }
+    clearInput();
+    return x;
+}
+
+char* createDynamicString(const char* src)
+{
+    char* p = new char[strlen(src) + 1];
+    strcpy(p, src);
+    return p;
+}
+
+void setDynamicString(char*& dest, const char* src)
+{
+    delete[] dest;
+    dest = createDynamicString(src);
+}
+
+void inputDynamicLine(const char* prompt, char*& s)
+{
+    string temp;
+    cout << prompt;
+    getline(cin, temp);
+
+    delete[] s;
+    s = new char[temp.length() + 1];
+    strcpy(s, temp.c_str());
+}
+
+//--------------------------------------------------
+// class fio
+//--------------------------------------------------
+class fio
+{
+private:
+    char* surname;
+    char* name;
+
+public:
+    fio()
+    {
+        surname = createDynamicString("");
+        name = createDynamicString("");
+    }
+
+    fio(const char* s, const char* n)
+    {
+        surname = createDynamicString(s);
+        name = createDynamicString(n);
+    }
+
+    fio(const fio& other)
+    {
+        surname = createDynamicString(other.surname);
+        name = createDynamicString(other.name);
+    }
+
+    fio& operator=(const fio& other)
+    {
+        if (this != &other)
+        {
+            setDynamicString(surname, other.surname);
+            setDynamicString(name, other.name);
+        }
+        return *this;
+    }
+
+    ~fio()
+    {
+        delete[] surname;
+        delete[] name;
+    }
+
+    void input()
+    {
+        inputDynamicLine("Enter surname: ", surname);
+        inputDynamicLine("Enter name: ", name);
+    }
+
+    void show() const
+    {
+        cout << surname << " " << name;
+    }
+
+    const char* getSurname() const
+    {
+        return surname;
+    }
+
+    const char* getName() const
+    {
+        return name;
+    }
+
+    friend istream& operator>>(istream& in, fio& f)
+    {
+        f.input();
+        return in;
+    }
+
+    friend ostream& operator<<(ostream& out, const fio& f)
+    {
+        out << f.surname << " " << f.name;
+        return out;
+    }
+};
+
+//--------------------------------------------------
+// class date
+//--------------------------------------------------
+class date
+{
+private:
+    int day;
+    int month;
+    int year;
+
+    bool isLeap(int y) const
+    {
+        return (y % 400 == 0) || (y % 4 == 0 && y % 100 != 0);
+    }
+
+    int daysInMonth(int m, int y) const
+    {
+        switch (m)
+        {
+        case 1: case 3: case 5: case 7: case 8: case 10: case 12:
+            return 31;
+        case 4: case 6: case 9: case 11:
+            return 30;
+        case 2:
+            return isLeap(y) ? 29 : 28;
+        default:
+            return 0;
+        }
+    }
+
+public:
+    date(int d = 1, int m = 1, int y = 2000)
+    {
+        day = d;
+        month = m;
+        year = y;
+    }
+
+    date(const date& other)
+    {
+        day = other.day;
+        month = other.month;
+        year = other.year;
+    }
+
+    date& operator=(const date& other)
+    {
+        if (this != &other)
+        {
+            day = other.day;
+            month = other.month;
+            year = other.year;
+        }
+        return *this;
+    }
+
+    void input()
+    {
+        while (true)
+        {
+            cout << "Enter day: ";
+            while (!(cin >> day))
+            {
+                clearInput();
+                cout << "Error. Enter day: ";
+            }
+
+            cout << "Enter month: ";
+            while (!(cin >> month))
+            {
+                clearInput();
+                cout << "Error. Enter month: ";
+            }
+
+            cout << "Enter year: ";
+            while (!(cin >> year) || year < 0)
+            {
+                clearInput();
+                cout << "Error. Enter year: ";
+            }
+
+            clearInput();
+
+            if (month >= 1 && month <= 12 &&
+                day >= 1 && day <= daysInMonth(month, year))
+                break;
+
+            cout << "Invalid date. Try again.\n";
+        }
+    }
+
+    bool operator>(const date& other) const
+    {
+        if (year != other.year) return year > other.year;
+        if (month != other.month) return month > other.month;
+        return day > other.day;
+    }
+
+    friend istream& operator>>(istream& in, date& d)
+    {
+        d.input();
+        return in;
+    }
+
+    friend ostream& operator<<(ostream& out, const date& d)
+    {
+        ios::fmtflags oldFlags = out.flags();
+        char oldFill = out.fill();
+
+        out << right << setfill('0')
+            << setw(2) << d.day << "."
+            << setw(2) << d.month << "."
+            << setw(4) << d.year;
+
+        out.flags(oldFlags);
+        out.fill(oldFill);
+
+        return out;
+    }
+};
+
+//--------------------------------------------------
+// base class common
+// all common fields and methods of Supplier / Supplier1
+//--------------------------------------------------
+class common
+{
+protected:
+    double sum;
+    date deliveryDate;
+
+    void inputCommon(const char* sumPrompt)
+    {
+        sum = inputDouble(sumPrompt);
+        cout << "Enter delivery date:\n";
+        cin >> deliveryDate;
+    }
+
+public:
+    common()
+    {
+        sum = 0;
+    }
+
+    common(double s, const date& d) : deliveryDate(d)
+    {
+        sum = s;
+    }
+
+    common(const common& other) : deliveryDate(other.deliveryDate)
+    {
+        sum = other.sum;
+    }
+
+    common& operator=(const common& other)
+    {
+        if (this != &other)
+        {
+            sum = other.sum;
+            deliveryDate = other.deliveryDate;
+        }
+        return *this;
+    }
+
+    virtual ~common() {}
+
+    bool operator>(const date& d) const
+    {
+        return deliveryDate > d;
+    }
+
+    virtual void input() = 0;
+    virtual void show() const = 0;
+    virtual const char* getType() const = 0;
+};
+
+//--------------------------------------------------
+// class firm
+// based on old Supplier data
+//--------------------------------------------------
+class firm : public common
+{
+private:
+    char* firmName;
+    char* rawMaterial;
+    int quantity;
+
+public:
+    firm() : common()
+    {
+        firmName = createDynamicString("");
+        rawMaterial = createDynamicString("");
+        quantity = 0;
+    }
+
+    firm(const firm& other) : common(other)
+    {
+        firmName = createDynamicString(other.firmName);
+        rawMaterial = createDynamicString(other.rawMaterial);
+        quantity = other.quantity;
+    }
+
+    firm& operator=(const firm& other)
+    {
+        if (this != &other)
+        {
+            common::operator=(other);
+            setDynamicString(firmName, other.firmName);
+            setDynamicString(rawMaterial, other.rawMaterial);
+            quantity = other.quantity;
+        }
+        return *this;
+    }
+
+    ~firm()
+    {
+        delete[] firmName;
+        delete[] rawMaterial;
+    }
+
+    void input() override
+    {
+        cout << "\nEnter data for firm:\n";
+        inputDynamicLine("Firm name: ", firmName);
+        inputDynamicLine("Raw material: ", rawMaterial);
+        quantity = inputInt("Quantity: ");
+        inputCommon("Supply amount: ");
+    }
+
+    void show() const override
+    {
+        cout << left
+             << setw(10) << "firm"
+             << setw(20) << firmName
+             << setw(20) << rawMaterial
+             << setw(10) << quantity
+             << setw(14) << fixed << setprecision(2) << sum
+             << deliveryDate
+             << endl;
+    }
+
+    const char* getType() const override
+    {
+        return "firm";
+    }
+
+    friend istream& operator>>(istream& in, firm& f)
+    {
+        f.input();
+        return in;
+    }
+
+    friend ostream& operator<<(ostream& out, const firm& f)
+    {
+        f.show();
+        return out;
+    }
+};
+
+//--------------------------------------------------
+// class person
+// based on new Supplier1 data
+//--------------------------------------------------
+class person : public common
+{
+private:
+    fio seller;
+
+public:
+    person() : common(), seller() {}
+
+    person(const person& other) : common(other), seller(other.seller) {}
+
+    person& operator=(const person& other)
+    {
+        if (this != &other)
+        {
+            common::operator=(other);
+            seller = other.seller;
+        }
+        return *this;
+    }
+
+    ~person() {}
+
+    void input() override
+    {
+        cout << "\nEnter data for person:\n";
+        cin >> seller;
+        inputCommon("Supply amount: ");
+    }
+
+    void show() const override
+    {
+        cout << left
+             << setw(10) << "person"
+             << setw(20) << seller.getSurname()
+             << setw(20) << seller.getName()
+             << setw(10) << "-"
+             << setw(14) << fixed << setprecision(2) << sum
+             << deliveryDate
+             << endl;
+    }
+
+    const char* getType() const override
+    {
+        return "person";
+    }
+
+    friend istream& operator>>(istream& in, person& p)
+    {
+        p.input();
+        return in;
+    }
+
+    friend ostream& operator<<(ostream& out, const person& p)
+    {
+        p.show();
+        return out;
+    }
+};
+
+//--------------------------------------------------
+// output table header
+//--------------------------------------------------
+void printHeader()
+{
+    cout << "\n--------------------------------------------------------------------------------\n";
+    cout << left
+         << setw(10) << "Type"
+         << setw(20) << "Field1"
+         << setw(20) << "Field2"
+         << setw(10) << "Count"
+         << setw(14) << "Sum"
+         << "Date" << endl;
+    cout << "--------------------------------------------------------------------------------\n";
+}
+
+//--------------------------------------------------
+// main
+//--------------------------------------------------
+int main()
+{
+    setlocale(LC_ALL, "");
+
+    int firmCount = inputInt("Enter number of firm objects: ");
+    int personCount = inputInt("Enter number of person objects: ");
+
+    firm* firms = nullptr;
+    person* persons = nullptr;
+
+    if (firmCount > 0)
+        firms = new firm[firmCount];
+
+    if (personCount > 0)
+        persons = new person[personCount];
+
+    for (int i = 0; i < firmCount; i++)
+    {
+        cout << "\n--- Input firm[" << i << "] ---\n";
+        cin >> firms[i];
+    }
+
+    for (int i = 0; i < personCount; i++)
+    {
+        cout << "\n--- Input person[" << i << "] ---\n";
+        cin >> persons[i];
+    }
+
+    date d;
+    cout << "\nEnter date for search.\n";
+    cin >> d;
+
+    int total = firmCount + personCount;
+    common** Result = nullptr;
+    int resultCount = 0;
+
+    if (total > 0)
+        Result = new common*[total];
+
+    for (int i = 0; i < firmCount; i++)
+    {
+        if (firms[i] > d)
+            Result[resultCount++] = &firms[i];
+    }
+
+    for (int i = 0; i < personCount; i++)
+    {
+        if (persons[i] > d)
+            Result[resultCount++] = &persons[i];
+    }
+
+    if (resultCount == 0)
+    {
+        cout << "\nNo matching elements found.\n";
+    }
+    else
+    {
+        cout << "\nSearch results:\n";
+        printHeader();
+        for (int i = 0; i < resultCount; i++)
+            Result[i]->show();
+    }
+
+    delete[] Result;
+    delete[] firms;
+    delete[] persons;
+
+    return 0;
+}
