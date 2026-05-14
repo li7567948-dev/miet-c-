@@ -1,0 +1,304 @@
+import numpy as np
+import sympy as sp
+import matplotlib.pyplot as plt
+from scipy.optimize import brentq
+
+# =====================================================
+# Упражнение 5, вариант 7
+# f(x, y) = 2x^3 + 6xy + y^3 + 2y
+# phi(x, y) = x^2 + 2y^2 - 12 = 0
+# =====================================================
+
+x, y, lam = sp.symbols('x y lam')
+
+f = 2*x**3 + 6*x*y + y**3 + 2*y
+phi = x**2 + 2*y**2 - 12
+
+fx = sp.diff(f, x)
+fy = sp.diff(f, y)
+
+phix = sp.diff(phi, x)
+phiy = sp.diff(phi, y)
+
+print("f(x,y) =", f)
+print("phi(x,y) =", phi)
+print()
+print("f_x =", fx)
+print("f_y =", fy)
+print("phi_x =", phix)
+print("phi_y =", phiy)
+print()
+
+print("Система Лагранжа:")
+print(sp.Eq(fx, lam * phix))
+print(sp.Eq(fy, lam * phiy))
+print(sp.Eq(phi, 0))
+print()
+
+
+# =====================================================
+# Безусловные экстремумы функции f(x,y)
+# =====================================================
+
+print("Безусловные критические точки:")
+
+# f_x = 6x^2 + 6y = 0  => y = -x^2
+# f_y = 6x + 3y^2 + 2 = 0
+# 6x + 3x^4 + 2 = 0
+
+poly = 3*x**4 + 6*x + 2
+roots = sp.nroots(poly)
+
+H = sp.hessian(f, (x, y))
+
+unconditional_points = []
+
+for r in roots:
+    if abs(sp.im(r)) < 1e-10:
+        x_val = float(sp.re(r))
+        y_val = -x_val**2
+        f_val = float(f.subs({x: x_val, y: y_val}))
+
+        H_val = H.subs({x: x_val, y: y_val})
+        A = float(H_val[0, 0])
+        D = float(H_val.det())
+
+        if D > 0 and A > 0:
+            point_type = "local minimum"
+        elif D > 0 and A < 0:
+            point_type = "local maximum"
+        elif D < 0:
+            point_type = "saddle point"
+        else:
+            point_type = "additional investigation"
+
+        unconditional_points.append((x_val, y_val, f_val, point_type))
+
+        print(f"x = {x_val:.6f}, y = {y_val:.6f}, f = {f_val:.6f}, type: {point_type}")
+
+print()
+
+
+# =====================================================
+# Проверка применимости метода Лагранжа
+# =====================================================
+
+print("Проверка применимости метода Лагранжа:")
+
+print("grad(phi) = (2x, 4y)")
+
+print("На эллипсе x^2 + 2y^2 = 12 одновременно x = 0 и y = 0 невозможно.")
+print("Следовательно, grad(phi) != 0 на ограничении.")
+print("Метод множителей Лагранжа применим.")
+print()
+
+
+# =====================================================
+# Параметризация ограничения
+# x^2 + 2y^2 = 12
+# x = 2sqrt(3)cos(t)
+# y = sqrt(6)sin(t)
+# =====================================================
+
+def F_num(X, Y):
+    return 2*X**3 + 6*X*Y + Y**3 + 2*Y
+
+
+def x_param(t):
+    return 2*np.sqrt(3)*np.cos(t)
+
+
+def y_param(t):
+    return np.sqrt(6)*np.sin(t)
+
+
+def f_param(t):
+    return F_num(x_param(t), y_param(t))
+
+
+def df_param(t):
+    X = x_param(t)
+    Y = y_param(t)
+
+    Fx = 6*X**2 + 6*Y
+    Fy = 6*X + 3*Y**2 + 2
+
+    dxdt = -2*np.sqrt(3)*np.sin(t)
+    dydt = np.sqrt(6)*np.cos(t)
+
+    return Fx*dxdt + Fy*dydt
+
+
+# =====================================================
+# Нахождение условных экстремумов
+# =====================================================
+
+roots_t = []
+N = 5000
+
+t_grid = np.linspace(0, 2*np.pi, N + 1)
+values = np.array([df_param(t) for t in t_grid])
+
+for i in range(N):
+    a = t_grid[i]
+    b = t_grid[i + 1]
+
+    fa = values[i]
+    fb = values[i + 1]
+
+    if abs(fa) < 1e-8:
+        root = a
+    elif fa * fb < 0:
+        root = brentq(df_param, a, b)
+    else:
+        continue
+
+    root = root % (2*np.pi)
+
+    if not any(abs((root - old + np.pi) % (2*np.pi) - np.pi) < 1e-7 for old in roots_t):
+        roots_t.append(root)
+
+roots_t = sorted(roots_t)
+
+conditional_points = []
+
+for t0 in roots_t:
+    x_val = x_param(t0)
+    y_val = y_param(t0)
+    f_val = f_param(t0)
+
+    eps = 1e-4
+    second = (f_param(t0 + eps) - 2*f_param(t0) + f_param(t0 - eps)) / eps**2
+
+    if second > 0:
+        point_type = "conditional minimum"
+    else:
+        point_type = "conditional maximum"
+
+    conditional_points.append((x_val, y_val, f_val, point_type))
+
+
+print("Условные экстремумы на x^2 + 2y^2 = 12:")
+
+for p in conditional_points:
+    print(f"x = {p[0]:.6f}, y = {p[1]:.6f}, f = {p[2]:.6f}, type: {p[3]}")
+
+print()
+
+minimum_point = min(conditional_points, key=lambda p: p[2])
+maximum_point = max(conditional_points, key=lambda p: p[2])
+
+print("Абсолютный условный минимум:")
+print(f"x = {minimum_point[0]:.6f}, y = {minimum_point[1]:.6f}, f = {minimum_point[2]:.6f}")
+
+print("Абсолютный условный максимум:")
+print(f"x = {maximum_point[0]:.6f}, y = {maximum_point[1]:.6f}, f = {maximum_point[2]:.6f}")
+
+
+# =====================================================
+# ГРАФИК 1
+# Линии уровня функции f(x,y)
+# и ограничение x^2 + 2y^2 = 12
+# =====================================================
+
+X = np.linspace(-4, 4, 500)
+Y = np.linspace(-3, 3, 500)
+
+XX, YY = np.meshgrid(X, Y)
+ZZ = F_num(XX, YY)
+
+theta = np.linspace(0, 2*np.pi, 1000)
+
+ellipse_x = x_param(theta)
+ellipse_y = y_param(theta)
+ellipse_z = f_param(theta)
+
+plt.figure(figsize=(9, 7))
+
+levels = np.linspace(np.min(ZZ), np.max(ZZ), 30)
+
+cs = plt.contour(XX, YY, ZZ, levels=levels)
+plt.clabel(cs, inline=True, fontsize=8)
+
+plt.plot(
+    ellipse_x,
+    ellipse_y,
+    linewidth=3,
+    label=r"$x^2+2y^2=12$"
+)
+
+for x_val, y_val, f_val, point_type in conditional_points:
+    plt.plot(x_val, y_val, marker='o', markersize=8)
+
+    plt.text(
+        x_val + 0.08,
+        y_val + 0.08,
+        f"{point_type}\n({x_val:.2f}, {y_val:.2f})",
+        fontsize=8
+    )
+
+for x_val, y_val, f_val, point_type in unconditional_points:
+    plt.plot(x_val, y_val, marker='x', markersize=9)
+
+    plt.text(
+        x_val + 0.08,
+        y_val + 0.08,
+        f"{point_type}\n({x_val:.2f}, {y_val:.2f})",
+        fontsize=8
+    )
+
+plt.title(r"Линии уровня $f(x,y)$ и ограничение $x^2+2y^2=12$")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.grid(True)
+plt.axis("equal")
+plt.legend()
+
+plt.savefig("exercise5_level_lines.png", dpi=300)
+plt.show()
+
+
+# =====================================================
+# ГРАФИК 2
+# Поверхность z = f(x,y)
+# и кривая на поверхности при ограничении
+# x^2 + 2y^2 = 12
+# =====================================================
+
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection="3d")
+
+Xs = np.linspace(-4, 4, 120)
+Ys = np.linspace(-3, 3, 120)
+
+Xs, Ys = np.meshgrid(Xs, Ys)
+Zs = F_num(Xs, Ys)
+
+ax.plot_surface(Xs, Ys, Zs, alpha=0.6)
+
+ax.plot(
+    ellipse_x,
+    ellipse_y,
+    ellipse_z,
+    linewidth=4,
+    label="constraint curve"
+)
+
+for x_val, y_val, f_val, point_type in conditional_points:
+    ax.scatter([x_val], [y_val], [f_val], s=70)
+
+    ax.text(
+        x_val,
+        y_val,
+        f_val,
+        f"  {point_type}\n  ({x_val:.2f}, {y_val:.2f}, {f_val:.2f})",
+        fontsize=8
+    )
+
+ax.set_title(r"Поверхность $z=f(x,y)$ и кривая ограничения")
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+ax.set_zlabel("z")
+
+plt.savefig("exercise5_surface_curve.png", dpi=300)
+plt.show()
